@@ -35,7 +35,7 @@ namespace Unity3dAzure.WebSockets {
 
     #region Web Socket methods
 
-    /*
+    
 
     public override void Connect () {
       ConnectWebSocket ();
@@ -45,7 +45,7 @@ namespace Unity3dAzure.WebSockets {
       DisconnectWebSocket ();
     }
 
-    */
+    
 
     #endregion
 

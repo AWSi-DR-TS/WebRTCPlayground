@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311992, g: 0.38074034, b: 0.35872713, a: 1}
+  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074014, b: 0.3587274, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -259,9 +259,9 @@ MonoBehaviour:
   AutoLogErrors: 1
   LocalPeerId: 
   RemotePeerId: 
-  Server: demos.openvidu.io
-  Secret: MY_SECRET
-  Room: TestWebcam
+  Server: zweitblick.awsi.cloud
+  Secret: e29z34-djjh3Wjxz-5zzu5
+  Room: AWSiTest
   PollTimeMs: 1000
 --- !u!4 &502645876
 Transform:
