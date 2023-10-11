@@ -258,7 +258,7 @@ MonoBehaviour:
   PeerConnection: {fileID: 114452440398351871}
   AutoLogErrors: 1
   LocalPeerId: 
-  RemotePeerId: 
+  RemotePeerId: OpenVidu_User33
   Server: zweitblick.awsi.cloud
   Secret: e29z34-djjh3Wjxz-5zzu5
   Room: AWSiTest
@@ -301,7 +301,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f6610ba9beacb34690446c839cd976f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  webSocketUri: wss://demos.openvidu.io/openvidu
+  webSocketUri: wss://zweitblick.awsi.cloud:2443/openvidu
   headers: []
 --- !u!1 &594695093
 GameObject:

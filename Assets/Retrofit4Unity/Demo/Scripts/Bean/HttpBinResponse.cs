@@ -2,6 +2,42 @@
 
 namespace Demo.Scripts
 {
+    public class KeycloakResponse
+    {
+        [JsonProperty("access_token")]
+        public string accessToken;
+        [JsonProperty("expires_in")]
+        public int expiresIn;
+        [JsonProperty("refresh_expires_in")]
+        public int refreshExpiresIn;
+        [JsonProperty("refresh_token")]
+        public string refreshToken;
+        [JsonProperty("token_type")]
+        public string tokenType;
+        [JsonProperty("id_token")]
+        public string idToken;
+        [JsonProperty("not-before-policy")]
+        public int notBeforePolicy;
+        [JsonProperty("session_state")]
+        public string sessionState;
+        [JsonProperty("scope")]
+        public string scope;
+    }
+
+    public class OpenViduResponse
+    {
+        [JsonProperty("status")]
+        public int status;
+        [JsonProperty("response")]
+        public OpenViduTokenResponse response;
+    }
+
+    public class OpenViduTokenResponse
+    {
+        [JsonProperty("token")]
+        public string token;
+    }
+
     public class HttpBinResponse
     {
 

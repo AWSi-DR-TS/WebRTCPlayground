@@ -28,9 +28,9 @@ namespace Retrofit
 
         public static bool IsObservable(Type rawType)
         {
-            return rawType == typeof (IObservable<>);
+            return rawType == typeof (UniRx.IObservable<>);
         }
-        public IObservable<T> CreateRequestObservable<T>(RestMethodInfo methodInfo, string url,object[] arguments )
+        public UniRx.IObservable<T> CreateRequestObservable<T>(RestMethodInfo methodInfo, string url,object[] arguments )
         {
             var ob = Observable.Create<T>(o =>
             {

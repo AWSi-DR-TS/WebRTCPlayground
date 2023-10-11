@@ -74,19 +74,12 @@ namespace OpenVidu
         public string StreamId;
     }
 
-
-
-
-
-
-
-
     [Serializable]
     public class OpenViduMessageJson
     {
         public long id;
-        public string Jsonrpc;
         public string Method;
+        public string Jsonrpc;
     }
 
 
@@ -105,6 +98,7 @@ namespace OpenVidu
         public string metadata;
         public JoinRoomAnswerValue[] value;
         public string sessionId;
+        public string session;
     }
 
     [Serializable]

@@ -26,7 +26,7 @@ namespace Retrofit.HttpImpl
             throw new System.NotImplementedException();
         }
 
-        public void RxSendRequest<T>(IObserver<T> o, Converter.Converter convert, object request)
+        public void RxSendRequest<T>(UniRx.IObserver<T> o, Converter.Converter convert, object request)
         {
             HttpClientRequest httpClientRequest = request as HttpClientRequest;
             if (httpClientRequest != null)
@@ -39,7 +39,7 @@ namespace Retrofit.HttpImpl
             }
         }
 
-        public object RxBuildRequest<T>(IObserver<T> o, Converter.Converter convert, RestMethodInfo methodInfo, string url)
+        public object RxBuildRequest<T>(UniRx.IObserver<T> o, Converter.Converter convert, RestMethodInfo methodInfo, string url)
         {
             Action<HttpResponseMessage<string>> responseMessage = message =>
             {

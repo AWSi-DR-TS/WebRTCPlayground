@@ -40,7 +40,7 @@ namespace Unity3dAzure.WebSockets {
     }
 
     protected virtual void OnWebSocketClose (object sender, WebSocketCloseEventArgs e) {
-      Debug.Log ("Web socket closed with reason: " + e.Reason);
+      Debug.Log ("Web socket closed with reason: " + e.Reason + " Code: " + e.Code);
       DettachHandlers();
     }
 
@@ -112,7 +112,7 @@ namespace Unity3dAzure.WebSockets {
       if (!isAttached) {
         Debug.Log ("Connect Web Socket: " + _ws.Url());
         AttachHandlers();
-        _ws.ConnectAsync ();
+        _ws.ConnectAsync();
       }
     }
 
