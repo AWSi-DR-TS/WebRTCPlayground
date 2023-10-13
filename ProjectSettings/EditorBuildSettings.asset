@@ -8,4 +8,7 @@ EditorBuildSettings:
   - enabled: 0
     path: 
     guid: 00000000000000000000000000000000
+  - enabled: 1
+    path: Assets/VideoChatDemo.unity
+    guid: 47838172796f99b46b026770525c24f0
   m_configObjects: {}

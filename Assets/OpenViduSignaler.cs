@@ -6,6 +6,7 @@ using System.Text;
 using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
 using Unity3dAzure.WebSockets;
 using System.Collections.Specialized;
@@ -15,15 +16,14 @@ using Retrofit;
 using Demo.Scripts;
 using UniRx;
 using System.Threading;
+using System.Runtime.InteropServices;
+using AOT;
 
 namespace Microsoft.MixedReality.WebRTC.Unity
 {
 
     public class OpenViduSignaler : Signaler, IDataReceiver
     {
-
-
-
         /// <summary>
         /// Automatically log all errors to the Unity console.
         /// </summary>
@@ -339,6 +339,13 @@ namespace Microsoft.MixedReality.WebRTC.Unity
 
         #endregion
 
+        //#region WebRTC Camera to unity
+
+        //[DllImport("CameraCapture")]
+        //private static extern void initializeCamera();
+
+        //#endregion
+
 
 
         /// <summary>
@@ -349,8 +356,6 @@ namespace Microsoft.MixedReality.WebRTC.Unity
         /// </remarks>
         private void Start()
         {
-
-
             if (string.IsNullOrEmpty(Secret))
             {
                 throw new ArgumentNullException("Secret");
@@ -595,7 +600,7 @@ namespace Microsoft.MixedReality.WebRTC.Unity
             //if there's a pending sdpanswer, then connect and consume it
             if (sdpAnswer != null)
             {
-                PeerConnection.HandleConnectionMessageAsync(sdpAnswer); // If i call this I publish my video but I'm not able to subscribe
+                //PeerConnection.HandleConnectionMessageAsync(sdpAnswer); // If i call this I publish my video but I'm not able to subscribe
 
                 long i = idMessage++;
 
@@ -675,5 +680,66 @@ namespace Microsoft.MixedReality.WebRTC.Unity
 #endif
         }
 
+        Texture2D texture;
+        int width = 640; // width of the video frame
+        int height = 480; // height of the video frame
+
+        public void OnReceiveFrame(byte[] yuvData)
+        {
+            Debug.Log("got data: " + yuvData);
+
+            //if (texture == null)
+            //{
+            //    texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            //}
+
+            //// Convert yuvData to RGB and fill the texture
+            //// This conversion might require a custom shader or compute operation
+            //ConvertYUVToRGBAndFillTexture(yuvData, texture);
+        }
+
+        void ConvertYUVToRGBAndFillTexture(byte[] yuvData, Texture2D texture)
+        {
+            int width = texture.width;
+            int height = texture.height;
+            Color[] rgbData = new Color[width * height];
+
+            int frameSize = width * height;
+            int yIndex = 0;
+            int uvIndex = frameSize;
+
+            for (int j = 0, yp = 0; j < height; j++)
+            {
+                int uvp = uvIndex, u = 0, v = 0;
+                for (int i = 0; i < width; i++, yIndex++, yp++)
+                {
+                    int y = (0xff & ((int)yuvData[yIndex])) - 16;
+                    if (y < 0) y = 0;
+                    if ((i & 1) == 0)
+                    {
+                        v = (0xff & yuvData[uvp++]) - 128;
+                        u = (0xff & yuvData[uvp++]) - 128;
+                    }
+
+                    int y1192 = 1192 * y;
+                    int r = (y1192 + 1634 * v);
+                    int g = (y1192 - 833 * v - 400 * u);
+                    int b = (y1192 + 2066 * u);
+
+                    if (r < 0) r = 0; else if (r > 262143) r = 262143;
+                    if (g < 0) g = 0; else if (g > 262143) g = 262143;
+                    if (b < 0) b = 0; else if (b > 262143) b = 262143;
+
+                    rgbData[yp] = new Color((r >> 10) & 0xff, (g >> 10) & 0xff, (b >> 10) & 0xff);
+                }
+                if ((j & 1) == 0 && j < height - 1)
+                {
+                    uvIndex += width;
+                }
+            }
+
+            texture.SetPixels(rgbData);
+            texture.Apply();
+        }
     }
 }
