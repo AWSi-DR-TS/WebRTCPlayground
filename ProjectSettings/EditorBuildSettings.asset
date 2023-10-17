@@ -5,10 +5,9 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: 
-    guid: 00000000000000000000000000000000
   - enabled: 1
     path: Assets/VideoChatDemo.unity
     guid: 47838172796f99b46b026770525c24f0
-  m_configObjects: {}
+  m_configObjects:
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 2d919341235d6495ca9085c9d6e8cc3d,
+      type: 2}
