@@ -9,5 +9,7 @@ EditorBuildSettings:
     path: Assets/VideoChatDemo.unity
     guid: 47838172796f99b46b026770525c24f0
   m_configObjects:
+    UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 533877dab6591ef478c1473e0a675dc9,
+      type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 2d919341235d6495ca9085c9d6e8cc3d,
       type: 2}
