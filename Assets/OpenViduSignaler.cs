@@ -709,28 +709,5 @@ namespace Microsoft.MixedReality.WebRTC.Unity
 
             return byteArray;
         }
-
-
-        void SendTextureViaTransceiver(Texture2D texture, RTCRtpTransceiver transceiver)
-        {
-            // Convert Texture2D to byte array
-            byte[] byteArray = ConvertTextureToByteArray(texture); // Implement this conversion function
-
-            // Convert byte array to NativeArray
-            NativeArray<byte> nativeArray = new NativeArray<byte>(byteArray, Allocator.Temp);
-
-            // Create new video frame
-            var videoFrame = new RTCVideoFrame();
-            videoFrame.UpdateTexture(nativeArray, texture.width, texture.height);
-
-            // Send frame via transceiver
-            transceiver.Sender.SendFrame(videoFrame);
-
-            // Dispose NativeArray to free memory
-            nativeArray.Dispose();
-        }
-
-
-
     }
 }
