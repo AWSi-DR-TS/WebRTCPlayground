@@ -345,8 +345,7 @@ namespace Microsoft.MixedReality.WebRTC.Unity
 
 
         [Header(@"UI")]
-        public RawImage rawImage;
-        public AspectRatioFitter aspectFitter;
+        public RenderTexture renderTexture;
 
         #endregion
 
@@ -448,14 +447,13 @@ namespace Microsoft.MixedReality.WebRTC.Unity
                 // Get the camera device
                 var device = query.current as CameraDevice;
                 // Start the camera preview
-                var textureOutput = new TextureOutput(); // stick around for an explainer
+                var textureOutput = new RenderTextureOutput(); // stick around for an explainer
                 device.StartRunning(textureOutput);
                 // Display the preview in our UI
-                var previewTexture = await textureOutput;
-                rawImage.texture = previewTexture;
-                aspectFitter.aspectRatio = (float)previewTexture.width / previewTexture.height;
+                renderTexture = await textureOutput.NextFrame();
 
-                var data = previewTexture.GetRawTextureData();
+                //rawImage.texture = previewTexture;
+                //aspectFitter.aspectRatio = (float)previewTexture.width / previewTexture.height;
 
             }            
         }

@@ -1,9 +1,9 @@
 {
-    "m_SelectedDeviceId": "18191FDF6002GF",
+    "m_SelectedDeviceId": "fd9bca4b",
     "m_SelectedPackage": {
-        "deviceId": "18191FDF6002GF",
+        "deviceId": "fd9bca4b",
         "name": "com.awsi.webrtccamera",
-        "processId": 11928,
+        "processId": 31015,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -42,6 +42,12 @@
             "deviceId": "18191FDF6002GF",
             "name": "com.awsi.webrtccamera",
             "processId": 11928,
+            "exited": false
+        },
+        {
+            "deviceId": "fd9bca4b",
+            "name": "com.awsi.webrtccamera",
+            "processId": 31015,
             "exited": false
         }
     ],
