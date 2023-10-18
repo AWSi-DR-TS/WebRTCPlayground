@@ -94,7 +94,7 @@ class WebSocketBridge : MonoBehaviour
                     {
 
                         string message = reader.ReadToEnd();
-                        Debug.Log(message);
+                        Debug.Log("Received: " + message);
                         if (OnReceived != null) OnReceived(message);
 
                     }

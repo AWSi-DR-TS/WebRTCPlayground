@@ -9,6 +9,10 @@ using NatML.Devices;
 using NatML.Devices.Outputs;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEngine.UI;
+using UniRx;
+using NatML.Hub;
+using System;
 
 public class OpenViduHandler : MonoBehaviour
 {
@@ -26,14 +30,26 @@ public class OpenViduHandler : MonoBehaviour
 
     Texture2D previewTexture;
 
-    public RenderTexture renderTexture;
+    RenderTexture renderTexture;
+
+    public RawImage rawImage;
 
     private long idMessage = 0;
     private bool videoUpdateStarted = false;
+    private bool webSocketConnected = false;
+    private bool videoPublished = false;
+    private RTCSessionDescriptionAsyncOperation operation;
+    private WebSocketBridge webSocket;
 
     // Start is called before the first frame update
     async void Start()
     {
+        webSocket = gameObject.GetComponent<WebSocketBridge>();
+
+        renderTexture = new RenderTexture(256, 256, 0, UnityEngine.Experimental.Rendering.GraphicsFormat.B8G8R8A8_UNorm);
+
+        rawImage.texture = renderTexture;
+
         // Get KeyCloakToken
         var kcContent = new FormUrlEncodedContent(
             new Dictionary<string, string>{
@@ -98,10 +114,43 @@ public class OpenViduHandler : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    async void Update()
     {
         Graphics.Blit(previewTexture, renderTexture);
+
+        if (operation != null)
+            Debug.Log(operation.Desc.sdp);
+
+        if (videoUpdateStarted && webSocketConnected && !videoPublished)
+        {
+            RTCOfferAnswerOptions options = default;
+            operation = localConnection.CreateOffer(ref options);
+
+            videoPublished = true;
+        }
+
+        if (operation != null && operation.IsDone)
+        {
+            long i = idMessage++;
+            await webSocket.Send("{\"jsonrpc\": \"2.0\"," +
+                "\"method\": \"publishVideo\"," +
+                "\"params\": {" +
+                "\"audioActive\": true," +
+                "\"videoActive\": true," +
+                "\"doLoopback\": false," +
+                "\"frameRate\": 30, " +
+                "\"hasAudio\": true," +
+                "\"hasVideo\": true," +
+                "\"typeOfVideo\": CAMERA," +
+                "\"videoDimensions\": {\"width\":1280, \"height\":720}," +
+                "\"sdpOffer\": " + operation.Desc.sdp + "  }," +
+                "\"id\": " + i + " }");
+
+            Debug.Log("---> added publish video message");
+            operation = null;
+        }
     }
+
 
     /*void OnDestroy()
     {
@@ -163,17 +212,10 @@ public class OpenViduHandler : MonoBehaviour
             StartCoroutine(WebRTC.Update());
             videoUpdateStarted = true;
         }
-
-        RTCOfferAnswerOptions options = default;
-        var op = localConnection.CreateAnswer(ref options);
-        Debug.Log(op);
     }
 
     private IEnumerator Connect(string token)
     {
-        //connect Websocket
-        var webSocket = gameObject.GetComponent<WebSocketBridge>();
-
         //wait for the socket to be ready
         yield return new WaitForSeconds(1f);
         long i = idMessage++;
@@ -189,7 +231,9 @@ public class OpenViduHandler : MonoBehaviour
         "\"recorder\": false  }," +
         "\"id\": " + i + " }");
 
+        yield return new WaitForSeconds(1f);
         Debug.Log("---> added join room message");
+        webSocketConnected = true;
     }
 
     // Display the video codec that is actually used.
