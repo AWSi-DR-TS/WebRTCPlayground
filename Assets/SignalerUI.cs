@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using UnityEngine;
+/*using UnityEngine;
 using UnityEngine.UI;
 using Microsoft.MixedReality.WebRTC.Unity;
 
@@ -57,3 +57,4 @@ public class SignalerUI : MonoBehaviour
         Signaler.PeerConnection.StartConnection();
     }
 }
+*/

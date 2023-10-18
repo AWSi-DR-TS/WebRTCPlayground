@@ -1,9 +1,9 @@
-﻿using Microsoft.MixedReality.WebRTC;
+﻿//using Microsoft.MixedReality.WebRTC;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class OpenViduLogger : MonoBehaviour
+/*public class OpenViduLogger : MonoBehaviour
 {
     public PeerConnection PeerConnection;
 
@@ -55,3 +55,4 @@ public class OpenViduLogger : MonoBehaviour
         Debug.Log("<color=pink>OnError </color>"+ s);
     }
 }
+*/
