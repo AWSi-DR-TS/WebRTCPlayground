@@ -9,7 +9,6 @@ using NatML.Devices;
 using NatML.Devices.Outputs;
 using System.Linq;
 using System.Threading.Tasks;
-using Unity3dAzure.WebSockets;
 
 public class OpenViduHandler : MonoBehaviour
 {
@@ -19,7 +18,7 @@ public class OpenViduHandler : MonoBehaviour
     RTCDataChannel sendChannel;
     RTCDataChannel receiveChannel;
 
-    List<RTCRtpSender> localSenders;
+    List<RTCRtpSender> localSenders = new List<RTCRtpSender>();
 
     MediaStream videoStream, receiveStream;
 
@@ -30,6 +29,7 @@ public class OpenViduHandler : MonoBehaviour
     public RenderTexture renderTexture;
 
     private long idMessage = 0;
+    private bool videoUpdateStarted = false;
 
     // Start is called before the first frame update
     async void Start()
@@ -70,9 +70,8 @@ public class OpenViduHandler : MonoBehaviour
 
         Debug.Log(ovResponseObj.response.token);
 
-        StartCamera();
-
         var config = GetSelectedSdpSemantics();
+
         receiveStream = new MediaStream();
 
         // Create local peer
@@ -94,6 +93,8 @@ public class OpenViduHandler : MonoBehaviour
         };
 
         StartCoroutine(Connect(ovResponseObj.response.token));
+
+        await StartCamera();
     }
 
     // Update is called once per frame
@@ -102,14 +103,14 @@ public class OpenViduHandler : MonoBehaviour
         Graphics.Blit(previewTexture, renderTexture);
     }
 
-    void OnDestroy()
+    /*void OnDestroy()
     {
         sendChannel.Close();
         receiveChannel.Close();
 
         localConnection.Close();
         remoteConnection.Close();
-    }
+    }*/
 
     async Task StartCamera()
     {
@@ -134,11 +135,11 @@ public class OpenViduHandler : MonoBehaviour
             previewTexture = await textureOutput.NextFrame();
 
             // Get a valid RendertextureFormat
-            var gfxType = SystemInfo.graphicsDeviceType;
-            var format = WebRTC.GetSupportedRenderTextureFormat(gfxType);
+            //var gfxType = SystemInfo.graphicsDeviceType;
+            //var format = WebRTC.GetSupportedRenderTextureFormat(gfxType);
 
             // Create a track from the RenderTexture
-            renderTexture = new RenderTexture(1280, 720, 0, format);
+            //renderTexture = new RenderTexture(1280, 720, 0, format);
             var track = new VideoStreamTrack(renderTexture);
 
             videoStream = new MediaStream();
@@ -155,41 +156,28 @@ public class OpenViduHandler : MonoBehaviour
             localSenders.Add(localConnection.AddTrack(track, videoStream));
         }
 
-        StartCoroutine(WebRTC.Update());
+        Debug.Log(localConnection.GetTransceivers().Count());
+
+        if (!videoUpdateStarted)
+        {
+            StartCoroutine(WebRTC.Update());
+            videoUpdateStarted = true;
+        }
 
         RTCOfferAnswerOptions options = default;
         var op = localConnection.CreateAnswer(ref options);
         Debug.Log(op);
     }
 
-
-    void handleSendChannelStatusChange()
-    {
-
-    }
-
-    void ReceiveChannelCallback(RTCDataChannel channel)
-    {
-        receiveChannel = channel;
-        receiveChannel.OnMessage = HandleReceiveMessage;
-    }
-
-    void HandleReceiveMessage(byte[] bytes)
-    {
-        var message = System.Text.Encoding.UTF8.GetString(bytes);
-        Debug.Log(message);
-    }
-
     private IEnumerator Connect(string token)
     {
         //connect Websocket
-        var webSocket = gameObject.GetComponent<UnityWebSocket>();
+        var webSocket = gameObject.GetComponent<WebSocketBridge>();
 
-        webSocket.Connect();
         //wait for the socket to be ready
         yield return new WaitForSeconds(1f);
         long i = idMessage++;
-        webSocket.SendText("{\"jsonrpc\": \"2.0\"," +
+        _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
          "\"method\": \"joinRoom\"," +
          "\"params\": {" +
          "\"token\": \"" + token + "\"," +
