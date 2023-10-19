@@ -50,7 +50,6 @@ class WebSocketBridge : MonoBehaviour
             Debug.Log(webSocket.State);
 
             await Receive();
-
         }
         catch (Exception ex)
         {
