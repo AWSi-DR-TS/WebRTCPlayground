@@ -467,7 +467,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1547416092}
   - component: {fileID: 1547416091}
-  - component: {fileID: 1547416093}
   - component: {fileID: 1547416094}
   m_Layer: 0
   m_Name: OpenViduHandler
@@ -489,6 +488,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rawImage: {fileID: 1895722466}
+  userName: OpenVidu_User33
 --- !u!4 &1547416092
 Transform:
   m_ObjectHideFlags: 0
@@ -504,20 +504,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1547416093
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1547416090}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1f6610ba9beacb34690446c839cd976f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  webSocketUri: wss://zweitblick.awsi.cloud:2443/openvidu
-  headers: []
 --- !u!114 &1547416094
 MonoBehaviour:
   m_ObjectHideFlags: 0

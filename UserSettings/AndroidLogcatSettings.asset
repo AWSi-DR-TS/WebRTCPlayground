@@ -1,9 +1,9 @@
 {
     "m_SelectedDeviceId": "fd9bca4b",
     "m_SelectedPackage": {
-        "deviceId": "fd9bca4b",
-        "name": "com.awsi.webrtccamera",
-        "processId": 16943,
+        "deviceId": "",
+        "name": "",
+        "processId": 0,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -46,56 +46,38 @@
         },
         {
             "deviceId": "fd9bca4b",
+            "name": "com.awsi.webrtccamera",
+            "processId": 8877,
+            "exited": true
+        },
+        {
+            "deviceId": "fd9bca4b",
+            "name": "com.awsi.webrtccamera",
+            "processId": 22074,
+            "exited": true
+        },
+        {
+            "deviceId": "fd9bca4b",
+            "name": "com.awsi.webrtccamera",
+            "processId": 5664,
+            "exited": true
+        },
+        {
+            "deviceId": "fd9bca4b",
             "name": "com.realwear.launcher",
-            "processId": 3739,
-            "exited": false
-        },
-        {
-            "deviceId": "fd9bca4b",
-            "name": "com.realwear.realwearexplorer.cast",
-            "processId": 3882,
+            "processId": 3638,
             "exited": false
         },
         {
             "deviceId": "fd9bca4b",
             "name": "com.awsi.webrtccamera",
-            "processId": 13588,
+            "processId": 6239,
             "exited": true
         },
         {
             "deviceId": "fd9bca4b",
             "name": "com.awsi.webrtccamera",
-            "processId": 13908,
-            "exited": true
-        },
-        {
-            "deviceId": "fd9bca4b",
-            "name": "com.awsi.webrtccamera",
-            "processId": 14409,
-            "exited": true
-        },
-        {
-            "deviceId": "fd9bca4b",
-            "name": "com.awsi.webrtccamera",
-            "processId": 14986,
-            "exited": true
-        },
-        {
-            "deviceId": "fd9bca4b",
-            "name": "com.awsi.webrtccamera",
-            "processId": 15311,
-            "exited": false
-        },
-        {
-            "deviceId": "fd9bca4b",
-            "name": "com.awsi.webrtccamera",
-            "processId": 15719,
-            "exited": false
-        },
-        {
-            "deviceId": "fd9bca4b",
-            "name": "com.awsi.webrtccamera",
-            "processId": 16943,
+            "processId": 8193,
             "exited": false
         },
         {
