@@ -26,6 +26,7 @@ public class OpenViduHandler : MonoBehaviour
     public RawImage rawImage;
     public string userName = "Test";
 
+    private CameraDevice cameraDevice;
     private long idMessage = 0;
     private long joinId = -1;
     private long publishVideoId = -1;
@@ -35,6 +36,12 @@ public class OpenViduHandler : MonoBehaviour
     private bool descAdded = false;
     private bool joined = false;
     private bool published = false;
+    private bool isTorchOn = false;
+    private bool cameraInitialized = false;
+    private bool zoomSet = false;
+
+    private float zoomRatio;
+
     private string endpointName;
     private RTCSessionDescriptionAsyncOperation op;
     private RTCSetSessionDescriptionAsyncOperation operationRemote;
@@ -134,6 +141,23 @@ public class OpenViduHandler : MonoBehaviour
     {
         Graphics.Blit(previewTexture, renderTexture);
 
+        if (cameraInitialized && !zoomSet)
+        {
+            Debug.Log("Focusmode: " + cameraDevice.focusMode);
+            zoomRatio = cameraDevice.zoomRatio;
+
+            Debug.Log("Zoom Range from " + cameraDevice.zoomRange.min + " to " + cameraDevice.zoomRange.max);
+            Debug.Log("Zoom Ratio now " + zoomRatio);
+
+            Debug.Log(cameraDevice.previewResolution);
+
+            cameraDevice.previewResolution = (1280, 720);
+
+            Debug.Log(cameraDevice.previewResolution);
+
+            zoomSet = true;
+        }
+
         if (operationRemote != null && operationRemote.IsDone)
         {
             OnSetRemoteSuccess(localConnection);
@@ -146,11 +170,11 @@ public class OpenViduHandler : MonoBehaviour
             _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
                 "\"method\": \"publishVideo\"," +
                 "\"params\": {" +
-                "\"audioActive\": false," +
+                "\"audioActive\": true," +
                 "\"videoActive\": true," +
                 "\"doLoopback\": false," +
                 "\"frameRate\": 30," +
-                "\"hasAudio\": false," +
+                "\"hasAudio\": true," +
                 "\"hasVideo\": true," +
                 "\"typeOfVideo\": \"CAMERA\"," +
                 "\"videoDimensions\": \"{\\\"width\\\":1280, \\\"height\\\":720}\"," +
@@ -174,6 +198,31 @@ public class OpenViduHandler : MonoBehaviour
         remoteConnection.Close();
     }*/
 
+    public void SetTorch()
+    {
+        isTorchOn = !isTorchOn;
+        Debug.Log("Setting torch to " + isTorchOn);
+
+        if (isTorchOn)
+            cameraDevice.torchMode = CameraDevice.TorchMode.Maximum;
+        else
+            cameraDevice.torchMode = CameraDevice.TorchMode.Off;
+    }
+
+    public void SetZoom(int value)
+    {
+        zoomRatio += value;
+
+        if (zoomRatio > cameraDevice.zoomRange.max)
+            zoomRatio = cameraDevice.zoomRange.max;
+        else if (zoomRatio < cameraDevice.zoomRange.min)
+            zoomRatio = cameraDevice.zoomRange.min;
+
+        Debug.Log("Setting zoom to " + zoomRatio);
+
+        cameraDevice.zoomRatio = zoomRatio;
+    }
+
     async Task StartCamera()
     {
         // Check camera permissions
@@ -189,12 +238,14 @@ public class OpenViduHandler : MonoBehaviour
             var filter = MediaDeviceCriteria.RearCamera;
             var query = new MediaDeviceQuery(filter);
             // Get the camera device
-            var device = query.current as CameraDevice;
+            cameraDevice = query.current as CameraDevice;
             // Start the camera preview
             var textureOutput = new TextureOutput();
-            device.StartRunning(textureOutput);
+            cameraDevice.StartRunning(textureOutput);
             // Display the preview in our UI
             previewTexture = await textureOutput.NextFrame();
+
+            cameraInitialized = true;
         }
     }
 
