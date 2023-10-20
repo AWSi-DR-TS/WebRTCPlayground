@@ -149,12 +149,6 @@ public class OpenViduHandler : MonoBehaviour
             Debug.Log("Zoom Range from " + cameraDevice.zoomRange.min + " to " + cameraDevice.zoomRange.max);
             Debug.Log("Zoom Ratio now " + zoomRatio);
 
-            Debug.Log(cameraDevice.previewResolution);
-
-            cameraDevice.previewResolution = (1280, 720);
-
-            Debug.Log(cameraDevice.previewResolution);
-
             zoomSet = true;
         }
 
@@ -234,7 +228,7 @@ public class OpenViduHandler : MonoBehaviour
         if (status == PermissionStatus.Authorized)
         {
             Debug.Log("------------> Will start preview now");
-            // Create a device query for the front camera 
+            // Create a device query for the rear camera 
             var filter = MediaDeviceCriteria.RearCamera;
             var query = new MediaDeviceQuery(filter);
             // Get the camera device
