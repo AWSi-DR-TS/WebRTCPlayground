@@ -26,6 +26,7 @@ public class OpenViduHandler : MonoBehaviour
     public RawImage rawImage;
     public string userName = "Test";
 
+    // private WebCamTexture webCamTexture;
     private CameraDevice cameraDevice;
     private long idMessage = 0;
     private long joinId = -1;
@@ -92,7 +93,6 @@ public class OpenViduHandler : MonoBehaviour
         };
 
         renderTexture = new RenderTexture(256, 256, 0, UnityEngine.Experimental.Rendering.GraphicsFormat.B8G8R8A8_UNorm);
-
         rawImage.texture = renderTexture;
 
         // Get KeyCloakToken
@@ -219,6 +219,14 @@ public class OpenViduHandler : MonoBehaviour
 
     async Task StartCamera()
     {
+        /*webCamTexture = new WebCamTexture();
+
+        webCamTexture.requestedWidth = 1280;
+        webCamTexture.requestedHeight = 720;
+
+        rawImage.texture = webCamTexture;
+        webCamTexture.Play();*/
+        
         // Check camera permissions
         PermissionStatus status = await MediaDeviceQuery.RequestPermissions<CameraDevice>();
         // Log

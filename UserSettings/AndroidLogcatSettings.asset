@@ -1,9 +1,9 @@
 {
     "m_SelectedDeviceId": "fd9bca4b",
     "m_SelectedPackage": {
-        "deviceId": "",
-        "name": "",
-        "processId": 0,
+        "deviceId": "fd9bca4b",
+        "name": "com.awsi.webrtccamera",
+        "processId": 27115,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -53,26 +53,32 @@
         {
             "deviceId": "fd9bca4b",
             "name": "com.awsi.webrtccamera",
-            "processId": 9725,
+            "processId": 21859,
             "exited": true
         },
         {
             "deviceId": "fd9bca4b",
             "name": "com.awsi.webrtccamera",
-            "processId": 10158,
+            "processId": 24505,
             "exited": true
         },
         {
             "deviceId": "fd9bca4b",
             "name": "com.awsi.webrtccamera",
-            "processId": 10558,
+            "processId": 18151,
             "exited": true
         },
         {
             "deviceId": "fd9bca4b",
             "name": "com.awsi.webrtccamera",
-            "processId": 11153,
+            "processId": 23095,
             "exited": true
+        },
+        {
+            "deviceId": "fd9bca4b",
+            "name": "com.awsi.webrtccamera",
+            "processId": 27115,
+            "exited": false
         },
         {
             "deviceId": "fddeca2b",
@@ -132,6 +138,18 @@
             "deviceId": "27211FDH3008UF",
             "name": "com.awsi.webrtccamera",
             "processId": 27785,
+            "exited": true
+        },
+        {
+            "deviceId": "27211FDH3008UF",
+            "name": "com.google.android.apps.nexuslauncher",
+            "processId": 3554,
+            "exited": false
+        },
+        {
+            "deviceId": "27211FDH3008UF",
+            "name": "com.awsi.webrtccamera",
+            "processId": 12602,
             "exited": false
         }
     ],
