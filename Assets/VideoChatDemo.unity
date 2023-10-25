@@ -1058,7 +1058,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rawImage: {fileID: 1895722466}
   userName: OpenVidu_User33
-  sessionName: AWSiTest2
+  sessionName: AWSiTest
 --- !u!4 &1547416092
 Transform:
   m_ObjectHideFlags: 0
