@@ -36,6 +36,7 @@ public class OpenViduHandler : MonoBehaviour
     private long publishVideoId = -1;
     private long prepareReceiveVideoId = -1;
     private long receiveVideoId = -1;
+    private long participantJoinedId = -1;
     private bool videoUpdateStarted = false;
     private bool webSocketConnected = false;
     private bool videoPublishSend = false;
@@ -54,6 +55,7 @@ public class OpenViduHandler : MonoBehaviour
     private bool answerCreated = false;
     private bool remoteOfferInit = false;
     private bool remoteOfferCreated = false;
+    private bool participantJoined = false;
 
     private WebSocketUser[] webSocketUsers;
 
@@ -143,8 +145,8 @@ public class OpenViduHandler : MonoBehaviour
             Debug.Log("test: " + remoteConnection.GetTransceivers().ToList().Count);
         }
 
-        // Debug.Log(remoteConnection?.ConnectionState);
-        // Debug.Log(remoteConnection?.SignalingState);
+        //Debug.Log(remoteConnection?.ConnectionState);
+        //Debug.Log(remoteConnection?.SignalingState);
     }
 
     /*void OnDestroy()
@@ -341,6 +343,40 @@ public class OpenViduHandler : MonoBehaviour
 
     private void HandleWebSocketAnswer(WebSocketAnswer webSocketAnswer)
     {
+        Debug.Log("web socket answer ID: " + webSocketAnswer.id);
+
+        Debug.Log("web socket answer Method: " + webSocketAnswer.method);
+
+        if (webSocketAnswer.method.Equals("participantJoined"))
+        {
+            Debug.Log("test participant joined");
+
+            var config = GetSelectedSdpSemantics();
+
+            // Create remote peer
+            remoteConnection = new(ref config);
+            remoteConnection.OnIceCandidate = candidate => {
+                Debug.Log("-----> ICE candidates remote peer");
+                OnIceCandidate(videoSenderId, candidate, true);
+            };
+            remoteConnection.OnIceConnectionChange = state => {
+                Debug.Log("-----> ICE connection change remote peer");
+                OnIceConnectionChange(remoteConnection, state);
+            };
+            remoteConnection.OnTrack = (RTCTrackEvent e) =>
+            {
+                Debug.Log("-----> ICE connection change remote peer");
+                if (e.Track is VideoStreamTrack video)
+                {
+                    Debug.Log("----> video track ID of remote user:: " + e.Track.Id);
+                    video.OnVideoReceived += tex =>
+                    {
+                        rawImage.texture = tex;
+                    };
+                }
+            };
+        }
+
         // Response to Join Message
         if (webSocketAnswer.id == joinId && !joined)
         {
@@ -357,22 +393,22 @@ public class OpenViduHandler : MonoBehaviour
             localConnection.OnNegotiationNeeded = () => { StartCoroutine(PeerNegotiationNeeded(localConnection)); };
 
             // Create remote peer
-            remoteConnection = new(ref config);
-            remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
-            remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
-            remoteConnection.OnTrack = (RTCTrackEvent e) =>
-            {
-                Debug.Log("test");
-                if (e.Track is VideoStreamTrack video)
-                {
-                    video.OnVideoReceived += tex =>
-                    {
-                        rawImage.texture = tex;
-                    };
-                }
-            };
+            //remoteConnection = new(ref config);
+            //remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
+            //remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
+            //remoteConnection.OnTrack = (RTCTrackEvent e) =>
+            //{
+            //    Debug.Log("test");
+            //    if (e.Track is VideoStreamTrack video)
+            //    {
+            //        video.OnVideoReceived += tex =>
+            //        {
+            //            rawImage.texture = tex;
+            //        };
+            //    }
+            //};
 
-            operationRemote = remoteConnection.CreateOffer();
+            //operationRemote = remoteConnection.CreateOffer();
 
             webSocketUsers = webSocketAnswer.result.value;
 
@@ -380,6 +416,7 @@ public class OpenViduHandler : MonoBehaviour
             {
                 if (user.streams != null)
                 {
+                    Debug.Log("User has joined with connection ID: " + user.id);
                     videoSenderId = user.streams[0].id;
                     break;
                 }
