@@ -1,21 +1,23 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using Unity.WebRTC;
-using System.Net.Http;
-using Newtonsoft.Json;
-using System.Net.Http.Headers;
 using NatML.Devices;
 using NatML.Devices.Outputs;
+using Newtonsoft.Json;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.UI;
+using Unity.WebRTC;
 
 public class OpenViduHandler : MonoBehaviour
 {
     RTCPeerConnection localConnection;
+    RTCPeerConnection remoteConnection;
 
-    List<RTCRtpSender> localSenders = new List<RTCRtpSender>();
+    List<RTCRtpSender> localSenders = new();
 
     HttpClient httpClient = new();
 
@@ -24,28 +26,46 @@ public class OpenViduHandler : MonoBehaviour
     RenderTexture renderTexture;
 
     public RawImage rawImage;
-    public string userName = "Test";
+    public string userName = "TestUser";
+    public string sessionName = "AWSiTest";
 
     // private WebCamTexture webCamTexture;
     private CameraDevice cameraDevice;
     private long idMessage = 0;
     private long joinId = -1;
     private long publishVideoId = -1;
+    private long prepareReceiveVideoId = -1;
+    private long receiveVideoId = -1;
     private bool videoUpdateStarted = false;
     private bool webSocketConnected = false;
     private bool videoPublishSend = false;
     private bool descAdded = false;
     private bool joined = false;
     private bool published = false;
+    private bool videoReceiveSend = false;
+    private bool videoReceivingPrepared = false;
+    private bool videoReceived = false;
     private bool isTorchOn = false;
     private bool cameraInitialized = false;
     private bool zoomSet = false;
+    private bool remoteLocalDescriptionSend = false;
+    private bool iceSet = false;
+    private bool answerInit = false;
+    private bool answerCreated = false;
+    private bool remoteOfferInit = false;
+    private bool remoteOfferCreated = false;
+
+    private WebSocketUser[] webSocketUsers;
 
     private float zoomRatio;
 
-    private string endpointName;
-    private RTCSessionDescriptionAsyncOperation op;
-    private RTCSetSessionDescriptionAsyncOperation operationRemote;
+    private string videoSenderId;
+    private string localEndpointName;
+    private RTCSessionDescription remoteOffer = new();
+    private RTCSessionDescriptionAsyncOperation operation;
+    private RTCSessionDescriptionAsyncOperation operationRemote;
+    private RTCSetSessionDescriptionAsyncOperation operationRemoteAnswer;
+    private RTCSetSessionDescriptionAsyncOperation test;
     private WebSocketBridge webSocket;
 
     // Start is called before the first frame update
@@ -54,84 +74,15 @@ public class OpenViduHandler : MonoBehaviour
         webSocket = gameObject.GetComponent<WebSocketBridge>();
         webSocket.OnReceived += e =>
         {
-            WebSocketAnswer test = JsonConvert.DeserializeObject<WebSocketAnswer>(e);
-            if (test.id == joinId && !joined)
-            {
-                joined = true;
-
-                endpointName = test.result.id;
-
-                var config = GetSelectedSdpSemantics();
-
-                // Create local peer
-                localConnection = new(ref config);
-                localConnection.OnIceCandidate = candidate => { OnIceCandidate(candidate); };
-                localConnection.OnIceConnectionChange = state => { OnIceConnectionChange(localConnection, state); };
-                localConnection.OnNegotiationNeeded = () => { StartCoroutine(PeerNegotiationNeeded(localConnection)); };
-
-                AddTracks();
-            }
-            if (test.method == "iceCandidate")
-            {
-                RTCIceCandidateInit rTCIceCandidateInit = new RTCIceCandidateInit();
-                rTCIceCandidateInit.candidate = test.@params.candidate;
-                rTCIceCandidateInit.sdpMid = test.@params.sdpMid;
-                rTCIceCandidateInit.sdpMLineIndex = test.@params.sdpMLineIndex;
-
-                localConnection.AddIceCandidate(new RTCIceCandidate(rTCIceCandidateInit));
-            }
-            if (test.id == publishVideoId && !published)
-            {
-                published = true;
-
-                RTCSessionDescription remoteDescription = new();
-                remoteDescription.type = RTCSdpType.Answer;
-                remoteDescription.sdp = test.result.sdpAnswer;
-
-                operationRemote = localConnection.SetRemoteDescription(ref remoteDescription);
-            }
+            WebSocketAnswer webSocketAnswer = JsonConvert.DeserializeObject<WebSocketAnswer>(e);
+            HandleWebSocketAnswer(webSocketAnswer);
         };
 
-        renderTexture = new RenderTexture(256, 256, 0, UnityEngine.Experimental.Rendering.GraphicsFormat.B8G8R8A8_UNorm);
+        renderTexture = new RenderTexture(256, 256, 0, GraphicsFormat.B8G8R8A8_UNorm);
         rawImage.texture = renderTexture;
 
-        // Get KeyCloakToken
-        var kcContent = new FormUrlEncodedContent(
-            new Dictionary<string, string>{
-                { "client_id", "zweitblick_client" },
-                { "grant_type", "password" },
-                { "scope", "openid" },
-                { "username", "glass_user" },
-                { "password", "4MHIyOZq$NU=TchA<PGZ" },
-            }
-        );
-        var kcResponse = await httpClient.PostAsync(
-            "https://zweitblick.awsi.cloud:7443/auth/realms/zweitblick/protocol/openid-connect/token",
-            kcContent
-        );
-        string kcResponseString = await kcResponse.Content.ReadAsStringAsync();
-        KeycloakResponse kcResponseObj = JsonConvert.DeserializeObject<KeycloakResponse>(kcResponseString);
-
-        Debug.Log(kcResponseObj.accessToken);
-
-        var ovContent = new StringContent(
-            JsonConvert.SerializeObject(new Dictionary<string, string>
-            {
-                { "sessionId", "AWSiTest" }
-            })
-        );
-        ovContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kcResponseObj.accessToken);
-        var ovResponse = await httpClient.PostAsync(
-            "https://zweitblick.awsi.cloud:9001/api/openvidu/token",
-            ovContent
-        );
-        var ovResponseString = await ovResponse.Content.ReadAsStringAsync();
-        OpenViduResponse ovResponseObj = JsonConvert.DeserializeObject<OpenViduResponse>(ovResponseString);
-
-        Debug.Log(ovResponseObj.response.token);
-
-        StartCoroutine(Connect(ovResponseObj.response.token));
+        KeycloakResponse kcResponseObj = await GetKeyCloakToken();
+        OpenViduResponse ovResponseObj = await GetOpenViduToken(kcResponseObj);
 
         await StartCamera();
     }
@@ -151,37 +102,50 @@ public class OpenViduHandler : MonoBehaviour
 
             zoomSet = true;
         }
-
-        if (operationRemote != null && operationRemote.IsDone)
+        else if (published && !remoteOfferInit) // && prepareReceiveVideoId == -1)
         {
-            OnSetRemoteSuccess(localConnection);
-            operationRemote = null;
+            //operationRemote = remoteConnection.CreateOffer();
+            remoteOfferInit = true;
+            // PrepareReceiveVideo();
+        }
+        else if (!videoPublishSend && webSocketConnected && descAdded)
+        {
+            PublishVideo();
+        }
+        /*else if (videoReceivingPrepared && test != null && test.IsDone) // && !answerInit)
+        {
+            // operationRemote = remoteConnection.CreateAnswer();
+            // answerInit = true;
+        }*/
+        else if (operationRemote != null && operationRemote.IsDone && !answerCreated)
+        {
+            var desc = operationRemote.Desc;
+            operationRemoteAnswer = remoteConnection.SetLocalDescription(ref desc);
+            answerCreated = true;
+        }
+        else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && receiveVideoId == -1)
+        {
+            ReceiveVideo();
+        }
+        else if (videoReceivingPrepared && published && !videoReceiveSend && operation.IsDone && !remoteLocalDescriptionSend)
+        {
+            remoteLocalDescriptionSend = true;
+        }
+        else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && videoReceived)
+        {
+            OnSetRemoteSuccess(remoteConnection);
+            operationRemoteAnswer = null;
+
+            Debug.Log(remoteConnection.LocalDescription.sdp);
+            Debug.Log(remoteConnection.RemoteDescription.sdp);
+            Debug.Log(remoteConnection.SignalingState);
+
+            Debug.Log("test: " + remoteConnection.GetTransceivers().ToList().Count);
         }
 
-        if (!videoPublishSend && webSocketConnected && descAdded)
-        {
-            long i = idMessage++;
-            _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
-                "\"method\": \"publishVideo\"," +
-                "\"params\": {" +
-                "\"audioActive\": true," +
-                "\"videoActive\": true," +
-                "\"doLoopback\": false," +
-                "\"frameRate\": 30," +
-                "\"hasAudio\": true," +
-                "\"hasVideo\": true," +
-                "\"typeOfVideo\": \"CAMERA\"," +
-                "\"videoDimensions\": \"{\\\"width\\\":1280, \\\"height\\\":720}\"," +
-                "\"sdpOffer\": \"" + localConnection.LocalDescription.sdp + "\"  }," +
-                "\"id\": " + i + "}");
-
-            publishVideoId = i;
-
-            Debug.Log("---> added publish video message");
-            videoPublishSend = true;
-        }
+        // Debug.Log(remoteConnection?.ConnectionState);
+        // Debug.Log(remoteConnection?.SignalingState);
     }
-
 
     /*void OnDestroy()
     {
@@ -219,6 +183,7 @@ public class OpenViduHandler : MonoBehaviour
 
     async Task StartCamera()
     {
+        // Get VideoStream with Unity WebCamTexture
         /*webCamTexture = new WebCamTexture();
 
         webCamTexture.requestedWidth = 1280;
@@ -265,6 +230,239 @@ public class OpenViduHandler : MonoBehaviour
         }
     }
 
+    private void PublishVideo()
+    {
+        long i = idMessage++;
+        _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
+            "\"method\": \"publishVideo\"," +
+            "\"params\": {" +
+            "\"audioActive\": true," +
+            "\"videoActive\": true," +
+            "\"doLoopback\": false," +
+            "\"frameRate\": 30," +
+            "\"hasAudio\": true," +
+            "\"hasVideo\": true," +
+            "\"typeOfVideo\": \"CAMERA\"," +
+            "\"videoDimensions\": \"{\\\"width\\\":1280, \\\"height\\\":720}\"," +
+            "\"sdpOffer\": \"" + localConnection.LocalDescription.sdp + "\"  }," +
+            "\"id\": " + i + "}");
+
+        publishVideoId = i;
+
+        Debug.Log("---> added publish video message with id: " + i);
+        videoPublishSend = true;
+        descAdded = false;
+    }
+
+    private void PrepareReceiveVideo()
+    {
+        OnSetRemoteSuccess(localConnection);
+
+        foreach (WebSocketUser user in webSocketUsers)
+        {
+            if (user.streams != null)
+            {
+                // Prepare receiving stream
+                long i = idMessage++;
+                _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
+                    "\"method\": \"prepareReceiveVideoFrom\"," +
+                    "\"params\": {" +
+                    "\"reconnect\": false," +
+                    "\"sender\": \"" + videoSenderId + "\" }," +
+                    "\"id\": " + i + "}");
+
+                prepareReceiveVideoId = i;
+
+                break;
+            }
+        }
+    }
+
+    private void ReceiveVideo()
+    {
+        // Receive stream
+        long i = idMessage++;
+        _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
+            "\"method\": \"receiveVideoFrom\"," +
+            "\"params\": {" +
+            "\"sdpOffer\": \"" + remoteConnection.LocalDescription.sdp + "\"," +
+            "\"sender\": \"" + videoSenderId + "\" }," +
+            "\"id\": " + i + " }");
+
+        Debug.Log("---> added receive message with id: " + i);
+
+        receiveVideoId = i;
+        operationRemote = null;
+        test = null;
+    }
+
+    private async Task<KeycloakResponse> GetKeyCloakToken()
+    {
+        // Get KeyCloakToken
+        var kcContent = new FormUrlEncodedContent(
+            new Dictionary<string, string>{
+                { "client_id", "zweitblick_client" },
+                { "grant_type", "password" },
+                { "scope", "openid" },
+                { "username", "glass_user" },
+                { "password", "4MHIyOZq$NU=TchA<PGZ" },
+            }
+        );
+        var kcResponse = await httpClient.PostAsync(
+            "https://zweitblick.awsi.cloud:7443/auth/realms/zweitblick/protocol/openid-connect/token",
+            kcContent
+        );
+        string kcResponseString = await kcResponse.Content.ReadAsStringAsync();
+        return JsonConvert.DeserializeObject<KeycloakResponse>(kcResponseString);
+    }
+
+    private async Task<OpenViduResponse> GetOpenViduToken(KeycloakResponse kcResponseObj)
+    {
+        // Get Open Vidu Token
+        var ovContent = new StringContent(
+            JsonConvert.SerializeObject(new Dictionary<string, string>
+            {
+                { "sessionId", sessionName }
+            })
+        );
+        ovContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kcResponseObj.accessToken);
+        var ovResponse = await httpClient.PostAsync(
+            "https://zweitblick.awsi.cloud:9001/api/openvidu/token",
+            ovContent
+        );
+        var ovResponseString = await ovResponse.Content.ReadAsStringAsync();
+        OpenViduResponse ovResponseObj = JsonConvert.DeserializeObject<OpenViduResponse>(ovResponseString);
+
+        StartCoroutine(Connect(ovResponseObj.response.token));
+
+        return ovResponseObj;
+    }
+
+    private void HandleWebSocketAnswer(WebSocketAnswer webSocketAnswer)
+    {
+        // Response to Join Message
+        if (webSocketAnswer.id == joinId && !joined)
+        {
+            joined = true;
+
+            localEndpointName = webSocketAnswer.result.id;
+
+            var config = GetSelectedSdpSemantics();
+
+            // Create local peer
+            localConnection = new(ref config);
+            localConnection.OnIceCandidate = candidate => { OnIceCandidate(localEndpointName, candidate, false); };
+            localConnection.OnIceConnectionChange = state => { OnIceConnectionChange(localConnection, state); };
+            localConnection.OnNegotiationNeeded = () => { StartCoroutine(PeerNegotiationNeeded(localConnection)); };
+
+            // Create remote peer
+            remoteConnection = new(ref config);
+            remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
+            remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
+            remoteConnection.OnTrack = (RTCTrackEvent e) =>
+            {
+                Debug.Log("test");
+                if (e.Track is VideoStreamTrack video)
+                {
+                    video.OnVideoReceived += tex =>
+                    {
+                        rawImage.texture = tex;
+                    };
+                }
+            };
+
+            operationRemote = remoteConnection.CreateOffer();
+
+            webSocketUsers = webSocketAnswer.result.value;
+
+            foreach (WebSocketUser user in webSocketUsers)
+            {
+                if (user.streams != null)
+                {
+                    videoSenderId = user.streams[0].id;
+                    break;
+                }
+            }
+
+            AddTracks();
+        }
+        // Handle ICECandidate Message
+        else if (webSocketAnswer.method == "iceCandidate")
+        {
+            RTCIceCandidateInit rTCIceCandidateInit = new RTCIceCandidateInit();
+            rTCIceCandidateInit.candidate = webSocketAnswer.@params.candidate;
+            rTCIceCandidateInit.sdpMid = webSocketAnswer.@params.sdpMid;
+            rTCIceCandidateInit.sdpMLineIndex = webSocketAnswer.@params.sdpMLineIndex;
+
+            Debug.Log(videoSenderId);
+
+            if (videoSenderId != null && webSocketAnswer.@params.endpointName.Contains(videoSenderId))
+            {
+                Debug.Log("test");
+                remoteConnection.AddIceCandidate(new RTCIceCandidate(rTCIceCandidateInit));
+                iceSet = true;
+            }
+            else if (webSocketAnswer.@params.endpointName.Contains(localEndpointName))
+            {
+                localConnection.AddIceCandidate(new RTCIceCandidate(rTCIceCandidateInit));
+            }
+            else
+                Debug.Log("test2");
+        }
+        // Response to Publish Message
+        else if (webSocketAnswer.id == publishVideoId && !published)
+        {
+            RTCSessionDescription remoteDescription = new();
+            remoteDescription.type = RTCSdpType.Answer;
+            remoteDescription.sdp = webSocketAnswer.result.sdpAnswer;
+
+            localConnection.SetRemoteDescription(ref remoteDescription);
+
+            //var config = GetSelectedSdpSemantics();
+            /*// Create remote peer
+            remoteConnection = new(ref config);
+            remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
+            remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
+            remoteConnection.OnTrack = (RTCTrackEvent e) =>
+            {
+                Debug.Log("test");
+                if (e.Track is VideoStreamTrack video)
+                {
+                    video.OnVideoReceived += tex =>
+                    {
+                        rawImage.texture = tex;
+                    };
+                }
+            };
+
+            operationRemote = remoteConnection.CreateOffer();
+            */
+            published = true;
+        }
+        // Response to Prepare Receive Message
+        /*else if (webSocketAnswer.id == prepareReceiveVideoId && !videoReceivingPrepared)
+        {
+            remoteOffer.type = RTCSdpType.Offer;
+            remoteOffer.sdp = webSocketAnswer.result.sdpOffer;
+
+            test = remoteConnection.SetRemoteDescription(ref remoteOffer);
+
+            videoReceivingPrepared = true;
+        }*/
+        // Response to Receive Message
+        else if (webSocketAnswer.id == receiveVideoId && !videoReceived)
+        {
+            RTCSessionDescription remoteAnswer = new();
+            remoteAnswer.type = RTCSdpType.Answer;
+            remoteAnswer.sdp = webSocketAnswer.result.sdpAnswer;
+
+            operationRemoteAnswer = remoteConnection.SetRemoteDescription(ref remoteAnswer);
+
+            videoReceived = true;
+        }
+    }
+
     private IEnumerator Connect(string token)
     {
         //wait for the socket to be ready
@@ -275,7 +473,7 @@ public class OpenViduHandler : MonoBehaviour
          "\"method\": \"joinRoom\"," +
          "\"params\": {" +
          "\"token\": \"" + token + "\"," +
-         "\"session\": \"AWSiTest\"," +
+         "\"session\": \"" + sessionName + "\"," +
          "\"platform\": \"Android 31\"," +
          "\"metadata\": \"{\\\"clientData\\\": \\\"" + userName + "\\\"}\"," +
         "\"secret\": \"\", " +
@@ -339,10 +537,10 @@ public class OpenViduHandler : MonoBehaviour
 
     IEnumerator PeerNegotiationNeeded(RTCPeerConnection pc)
     {
-        op = pc.CreateOffer();
-        yield return op;
+        operation = pc.CreateOffer();
+        yield return operation;
 
-        if (!op.IsError)
+        if (!operation.IsError)
         {
             if (pc.SignalingState != RTCSignalingState.Stable)
             {
@@ -350,19 +548,20 @@ public class OpenViduHandler : MonoBehaviour
                 yield break;
             }
 
-            yield return StartCoroutine(OnCreateOfferSuccess(pc, op.Desc));
+            yield return StartCoroutine(OnCreateOfferSuccess(pc, operation.Desc));
         }
         else
         {
-            OnCreateSessionDescriptionError(op.Error);
+            OnCreateSessionDescriptionError(operation.Error);
         }
     }
 
     private IEnumerator OnCreateOfferSuccess(RTCPeerConnection pc, RTCSessionDescription desc)
     {
+        RTCSetSessionDescriptionAsyncOperation op;
         Debug.Log($"Offer from\n{desc.sdp}");
         Debug.Log($"setLocalDescription start");
-        var op = pc.SetLocalDescription(ref desc);
+        op = pc.SetLocalDescription(ref desc);
         yield return op;
 
         if (!op.IsError)
@@ -397,9 +596,9 @@ public class OpenViduHandler : MonoBehaviour
         }
     }
 
-    private void OnIceCandidate(RTCIceCandidate candidate)
+    private void OnIceCandidate(string endpointName, RTCIceCandidate candidate, bool test)
     {
-        //localConnection.AddIceCandidate(candidate);
+        Debug.Log(test);
         long i = idMessage++;
         _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
                 "\"method\": \"onIceCandidate\"," +
@@ -426,24 +625,6 @@ public class OpenViduHandler : MonoBehaviour
     private void OnSetRemoteSuccess(RTCPeerConnection pc)
     {
         Debug.Log($"SetRemoteDescription complete");
-    }
-
-    IEnumerator OnCreateAnswerSuccess(RTCPeerConnection pc, RTCSessionDescription desc)
-    {
-        Debug.Log($"Answer:\n{desc.sdp}");
-        Debug.Log($"setLocalDescription start");
-        var op = pc.SetLocalDescription(ref desc);
-        yield return op;
-
-        if (!op.IsError)
-        {
-            OnSetLocalSuccess(pc);
-        }
-        else
-        {
-            var error = op.Error;
-            OnSetSessionDescriptionError(ref error);
-        }
     }
 
     private static void OnCreateSessionDescriptionError(RTCError error)
@@ -499,12 +680,27 @@ public class WebSocketAnswer
 public class WebSocketResult
 {
     public string id;
+    public string sdpOffer;
     public string sdpAnswer;
+    public WebSocketUser[] value;
 }
 
 public class WebSocketParams
 {
+    public string senderConnectionId;
+    public string endpointName;
     public string candidate;
     public string sdpMid;
     public int sdpMLineIndex;
+}
+
+public class WebSocketUser
+{
+    public string id;
+    public WebSocketStream[] streams;
+}
+
+public class WebSocketStream
+{
+    public string id;
 }
