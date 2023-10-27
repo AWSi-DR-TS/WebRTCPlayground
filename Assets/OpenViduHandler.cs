@@ -7,10 +7,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Unity.WebRTC;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.UI;
-using Unity.WebRTC;
 
 public class OpenViduHandler : MonoBehaviour
 {
@@ -25,6 +25,7 @@ public class OpenViduHandler : MonoBehaviour
 
     RenderTexture renderTexture;
 
+    public AudioSource audioSource;
     public RawImage rawImage;
     public string userName = "TestUser";
     public string sessionName = "AWSiTest";
@@ -62,6 +63,7 @@ public class OpenViduHandler : MonoBehaviour
     private float zoomRatio;
 
     private string videoSenderId;
+    private string remoteVideoSenderId = null;
     private string localEndpointName;
     private RTCSessionDescription remoteOffer = new();
     private RTCSessionDescriptionAsyncOperation operation;
@@ -76,8 +78,7 @@ public class OpenViduHandler : MonoBehaviour
         webSocket = gameObject.GetComponent<WebSocketBridge>();
         webSocket.OnReceived += e =>
         {
-            WebSocketAnswer webSocketAnswer = JsonConvert.DeserializeObject<WebSocketAnswer>(e);
-            HandleWebSocketAnswer(webSocketAnswer);
+            HandleWebSocketAnswer(e);
         };
 
         renderTexture = new RenderTexture(256, 256, 0, GraphicsFormat.B8G8R8A8_UNorm);
@@ -125,8 +126,9 @@ public class OpenViduHandler : MonoBehaviour
             operationRemoteAnswer = remoteConnection.SetLocalDescription(ref desc);
             answerCreated = true;
         }
-        else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && receiveVideoId == -1)
+        else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && receiveVideoId == -1 && remoteVideoSenderId != null)
         {
+            Debug.Log("about to recieve remote video...");
             ReceiveVideo();
         }
         else if (videoReceivingPrepared && published && !videoReceiveSend && operation.IsDone && !remoteLocalDescriptionSend)
@@ -135,7 +137,7 @@ public class OpenViduHandler : MonoBehaviour
         }
         else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && videoReceived)
         {
-            OnSetRemoteSuccess(remoteConnection);
+            Debug.Log("video is recieved...");
             operationRemoteAnswer = null;
 
             Debug.Log(remoteConnection.LocalDescription.sdp);
@@ -143,6 +145,8 @@ public class OpenViduHandler : MonoBehaviour
             Debug.Log(remoteConnection.SignalingState);
 
             Debug.Log("test: " + remoteConnection.GetTransceivers().ToList().Count);
+
+            Debug.Log(remoteConnection?.ConnectionState);
         }
 
         //Debug.Log(remoteConnection?.ConnectionState);
@@ -288,7 +292,7 @@ public class OpenViduHandler : MonoBehaviour
             "\"method\": \"receiveVideoFrom\"," +
             "\"params\": {" +
             "\"sdpOffer\": \"" + remoteConnection.LocalDescription.sdp + "\"," +
-            "\"sender\": \"" + videoSenderId + "\" }," +
+            "\"sender\": \"" + remoteVideoSenderId + "\" }," +
             "\"id\": " + i + " }");
 
         Debug.Log("---> added receive message with id: " + i);
@@ -341,45 +345,15 @@ public class OpenViduHandler : MonoBehaviour
         return ovResponseObj;
     }
 
-    private void HandleWebSocketAnswer(WebSocketAnswer webSocketAnswer)
+    private void HandleWebSocketAnswer(string e)
     {
-        Debug.Log("web socket answer ID: " + webSocketAnswer.id);
-
-        Debug.Log("web socket answer Method: " + webSocketAnswer.method);
-
-        if (webSocketAnswer.method.Equals("participantJoined"))
-        {
-            Debug.Log("test participant joined");
-
-            var config = GetSelectedSdpSemantics();
-
-            // Create remote peer
-            remoteConnection = new(ref config);
-            remoteConnection.OnIceCandidate = candidate => {
-                Debug.Log("-----> ICE candidates remote peer");
-                OnIceCandidate(videoSenderId, candidate, true);
-            };
-            remoteConnection.OnIceConnectionChange = state => {
-                Debug.Log("-----> ICE connection change remote peer");
-                OnIceConnectionChange(remoteConnection, state);
-            };
-            remoteConnection.OnTrack = (RTCTrackEvent e) =>
-            {
-                Debug.Log("-----> ICE connection change remote peer");
-                if (e.Track is VideoStreamTrack video)
-                {
-                    Debug.Log("----> video track ID of remote user:: " + e.Track.Id);
-                    video.OnVideoReceived += tex =>
-                    {
-                        rawImage.texture = tex;
-                    };
-                }
-            };
-        }
+        WebSocketAnswer webSocketAnswer = JsonConvert.DeserializeObject<WebSocketAnswer>(e);
 
         // Response to Join Message
         if (webSocketAnswer.id == joinId && !joined)
         {
+            Debug.Log("user joined with message: " + e);
+
             joined = true;
 
             localEndpointName = webSocketAnswer.result.id;
@@ -391,24 +365,18 @@ public class OpenViduHandler : MonoBehaviour
             localConnection.OnIceCandidate = candidate => { OnIceCandidate(localEndpointName, candidate, false); };
             localConnection.OnIceConnectionChange = state => { OnIceConnectionChange(localConnection, state); };
             localConnection.OnNegotiationNeeded = () => { StartCoroutine(PeerNegotiationNeeded(localConnection)); };
+            localConnection.OnTrack = track =>
+            {
+                Debug.Log("track local connection incoming. Track type: " + track.Track.Kind);
 
-            // Create remote peer
-            //remoteConnection = new(ref config);
-            //remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
-            //remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
-            //remoteConnection.OnTrack = (RTCTrackEvent e) =>
-            //{
-            //    Debug.Log("test");
-            //    if (e.Track is VideoStreamTrack video)
-            //    {
-            //        video.OnVideoReceived += tex =>
-            //        {
-            //            rawImage.texture = tex;
-            //        };
-            //    }
-            //};
-
-            //operationRemote = remoteConnection.CreateOffer();
+                if (track.Track is AudioStreamTrack t)
+                {
+                    Debug.Log("track is audio stream track.");
+                    audioSource.SetTrack(t);
+                    audioSource.loop = true;
+                    audioSource.Play();
+                }
+            };
 
             webSocketUsers = webSocketAnswer.result.value;
 
@@ -427,6 +395,8 @@ public class OpenViduHandler : MonoBehaviour
         // Handle ICECandidate Message
         else if (webSocketAnswer.method == "iceCandidate")
         {
+            Debug.Log("iceCandidate incoming. Endpoint: " + webSocketAnswer.@params.endpointName);
+
             RTCIceCandidateInit rTCIceCandidateInit = new RTCIceCandidateInit();
             rTCIceCandidateInit.candidate = webSocketAnswer.@params.candidate;
             rTCIceCandidateInit.sdpMid = webSocketAnswer.@params.sdpMid;
@@ -457,24 +427,24 @@ public class OpenViduHandler : MonoBehaviour
             localConnection.SetRemoteDescription(ref remoteDescription);
 
             //var config = GetSelectedSdpSemantics();
-            /*// Create remote peer
-            remoteConnection = new(ref config);
-            remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
-            remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
-            remoteConnection.OnTrack = (RTCTrackEvent e) =>
-            {
-                Debug.Log("test");
-                if (e.Track is VideoStreamTrack video)
-                {
-                    video.OnVideoReceived += tex =>
-                    {
-                        rawImage.texture = tex;
-                    };
-                }
-            };
+            // Create remote peer
+            //remoteConnection = new(ref config);
+            //remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(videoSenderId, candidate, true); };
+            //remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
+            //remoteConnection.OnTrack = (RTCTrackEvent e) =>
+            //{
+            //    Debug.Log("test");
+            //    if (e.Track is VideoStreamTrack video)
+            //    {
+            //        video.OnVideoReceived += tex =>
+            //        {
+            //            rawImage.texture = tex;
+            //        };
+            //    }
+            //};
 
             operationRemote = remoteConnection.CreateOffer();
-            */
+
             published = true;
         }
         // Response to Prepare Receive Message
@@ -497,6 +467,61 @@ public class OpenViduHandler : MonoBehaviour
             operationRemoteAnswer = remoteConnection.SetRemoteDescription(ref remoteAnswer);
 
             videoReceived = true;
+        }
+        else if (webSocketAnswer.method == "participantJoined")
+        {
+            var remoteConfig = GetSelectedSdpSemantics();
+
+            // Create remote peer
+            remoteConnection = new(ref remoteConfig);
+            remoteConnection.OnIceCandidate = candidate => {
+                Debug.Log("new ICE candidate remote peer connection: " + candidate.Candidate);
+                OnIceCandidate(videoSenderId, candidate, true); };
+            remoteConnection.OnIceConnectionChange = state => {
+                Debug.Log("ICE state change. new state: " + state);
+                OnIceConnectionChange(remoteConnection, state); };
+            remoteConnection.OnTrack = (RTCTrackEvent e) =>
+            {
+                Debug.Log("---->>> got track");
+                if (e.Track is VideoStreamTrack video)
+                {
+                    video.OnVideoReceived += tex =>
+                    {
+                        rawImage.texture = tex;
+                    };
+                }
+            };
+
+            operationRemote = remoteConnection.CreateOffer();
+
+
+            foreach (WebSocketUser user in webSocketUsers)
+            {
+                if (user.streams != null)
+                {
+                    Debug.Log("Remote User has joined with connection ID: " + user.id);
+                    videoSenderId = user.streams[0].id;
+                    break;
+                }
+            }
+
+            // Create a track from the RenderTexture
+            var streamTrack = new VideoStreamTrack(renderTexture);
+
+            localSenders.Add(remoteConnection.AddTrack(streamTrack));
+
+            if (!videoUpdateStarted)
+            {
+                StartCoroutine(WebRTC.Update());
+                videoUpdateStarted = true;
+            }
+        }
+        else if (webSocketAnswer.method == "participantPublished")
+        {
+            WebSocketParticipantPublishAnswer publishAnswer = JsonConvert.DeserializeObject<WebSocketParticipantPublishAnswer>(e);
+
+            remoteVideoSenderId = publishAnswer.@params.streams[0].id;
+
         }
     }
 
@@ -714,6 +739,14 @@ public class WebSocketAnswer
     public WebSocketParams @params;
 }
 
+public class WebSocketParticipantPublishAnswer
+{
+    public long id;
+    public string method;
+    public WebSocketResult result;
+    public WebSocketPublishParams @params;
+}
+
 public class WebSocketResult
 {
     public string id;
@@ -729,6 +762,12 @@ public class WebSocketParams
     public string candidate;
     public string sdpMid;
     public int sdpMLineIndex;
+}
+
+public class WebSocketPublishParams
+{
+    public string id;
+    public WebSocketStream[] streams;
 }
 
 public class WebSocketUser
