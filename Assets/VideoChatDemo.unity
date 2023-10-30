@@ -1187,7 +1187,7 @@ MonoBehaviour:
   audioSource: {fileID: 1554768187}
   rawImage: {fileID: 1895722466}
   userName: OpenVidu_User33
-  sessionName: AWSiTest
+  sessionName: AWSiTest2
   micAudioSource: {fileID: 70014239}
 --- !u!4 &1547416092
 Transform:

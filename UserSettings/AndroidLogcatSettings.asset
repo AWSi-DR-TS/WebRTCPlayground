@@ -1,9 +1,9 @@
 {
     "m_SelectedDeviceId": "27211FDH3008UF",
     "m_SelectedPackage": {
-        "deviceId": "27211FDH3008UF",
-        "name": "com.awsi.webrtccamera",
-        "processId": 27727,
+        "deviceId": "",
+        "name": "",
+        "processId": 0,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -161,44 +161,26 @@
         {
             "deviceId": "27211FDH3008UF",
             "name": "com.awsi.webrtccamera",
-            "processId": 1197,
-            "exited": true
-        },
-        {
-            "deviceId": "27211FDH3008UF",
-            "name": "com.awsi.webrtccamera",
-            "processId": 2860,
-            "exited": true
-        },
-        {
-            "deviceId": "27211FDH3008UF",
-            "name": "com.awsi.webrtccamera",
-            "processId": 4315,
-            "exited": true
-        },
-        {
-            "deviceId": "27211FDH3008UF",
-            "name": "com.awsi.webrtccamera",
-            "processId": 19535,
-            "exited": true
-        },
-        {
-            "deviceId": "27211FDH3008UF",
-            "name": "com.awsi.webrtccamera",
             "processId": 19813,
-            "exited": false
+            "exited": true
         },
         {
             "deviceId": "27211FDH3008UF",
             "name": "com.awsi.webrtccamera",
             "processId": 26488,
-            "exited": false
+            "exited": true
         },
         {
             "deviceId": "27211FDH3008UF",
             "name": "com.awsi.webrtccamera",
             "processId": 27727,
-            "exited": false
+            "exited": true
+        },
+        {
+            "deviceId": "27211FDH3008UF",
+            "name": "com.awsi.webrtccamera",
+            "processId": 10739,
+            "exited": true
         }
     ],
     "m_Tags": {
