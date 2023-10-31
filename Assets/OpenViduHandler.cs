@@ -1,6 +1,5 @@
 using NatML.Devices;
 using NatML.Devices.Outputs;
-using NatML.Hub;
 using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
@@ -36,7 +35,6 @@ public class OpenViduHandler : MonoBehaviour
     private long idMessage = 0;
     private long joinId = -1;
     private long publishVideoId = -1;
-    private long prepareReceiveVideoId = -1;
     private long receiveVideoId = -1;
     private bool videoUpdateStarted = false;
     private bool webSocketConnected = false;
@@ -44,22 +42,17 @@ public class OpenViduHandler : MonoBehaviour
     private bool descAdded = false;
     private bool joined = false;
     private bool published = false;
-    private bool videoReceiveSend = false;
-    private bool videoReceivingPrepared = false;
     private bool videoReceived = false;
     private bool isTorchOn = false;
     private bool cameraInitialized = false;
     private bool zoomSet = false;
-    private bool remoteLocalDescriptionSend = false;
     private bool answerCreated = false;
-    private bool remoteOfferInit = false;
 
     private WebSocketUser[] webSocketUsers;
     public AudioSource micAudioSource;
 
     private float zoomRatio;
 
-    private string videoSenderId;
     private string remoteVideoSenderId = null;
     private string localEndpointName;
     private string remoteEndpointName;
@@ -81,7 +74,6 @@ public class OpenViduHandler : MonoBehaviour
         };
 
         renderTexture = new RenderTexture(256, 256, 0, GraphicsFormat.B8G8R8A8_UNorm);
-        //rawImage.texture = renderTexture;
 
         KeycloakResponse kcResponseObj = await GetKeyCloakToken();
         OpenViduResponse ovResponseObj = await GetOpenViduToken(kcResponseObj);
@@ -126,12 +118,6 @@ public class OpenViduHandler : MonoBehaviour
 
             zoomSet = true;
         }
-        else if (published && !remoteOfferInit) // && prepareReceiveVideoId == -1)
-        {
-            //operationRemote = remoteConnection.CreateOffer();
-            remoteOfferInit = true;
-            // PrepareReceiveVideo();
-        }
         else if (!videoPublishSend && webSocketConnected && descAdded)
         {
             PublishVideo();
@@ -145,10 +131,6 @@ public class OpenViduHandler : MonoBehaviour
         else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && receiveVideoId == -1 && remoteVideoSenderId != null)
         {
             ReceiveVideo();
-        }
-        else if (videoReceivingPrepared && published && !videoReceiveSend && operation.IsDone && !remoteLocalDescriptionSend)
-        {
-            remoteLocalDescriptionSend = true;
         }
         else if (operationRemoteAnswer != null && operationRemoteAnswer.IsDone && videoReceived)
         {
@@ -273,30 +255,6 @@ public class OpenViduHandler : MonoBehaviour
         descAdded = false;
     }
 
-    private void PrepareReceiveVideo()
-    {
-        OnSetRemoteSuccess(localConnection);
-
-        foreach (WebSocketUser user in webSocketUsers)
-        {
-            if (user.streams != null)
-            {
-                // Prepare receiving stream
-                long i = idMessage++;
-                _ = webSocket.Send("{\"jsonrpc\": \"2.0\"," +
-                    "\"method\": \"prepareReceiveVideoFrom\"," +
-                    "\"params\": {" +
-                    "\"reconnect\": false," +
-                    "\"sender\": \"" + videoSenderId + "\" }," +
-                    "\"id\": " + i + "}");
-
-                prepareReceiveVideoId = i;
-
-                break;
-            }
-        }
-    }
-
     private void ReceiveVideo()
     {
         // Receive stream
@@ -390,32 +348,36 @@ public class OpenViduHandler : MonoBehaviour
                             break;
                         }
                     }
+                    if (!string.IsNullOrEmpty(remoteVideoSenderId))
+                    {
+                        break;
+                    }
                 }
             }
 
-            // Create remote peer
-            remoteConnection = new(ref config);
-            remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(remoteEndpointName, candidate); };
-            remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
-            remoteConnection.OnTrack = (RTCTrackEvent e) =>
-            {
-                if (e.Track is VideoStreamTrack video)
-                {
-                    video.OnVideoReceived += tex =>
-                    {
-                        rawImage.texture = tex;
-                    };
-                }
-                if (e.Track is AudioStreamTrack t)
-                {
-                    audioSource.SetTrack(t);
-                    audioSource.loop = true;
-                    audioSource.Play();
-                }
-            };
-
             if (!string.IsNullOrEmpty(remoteVideoSenderId))
             {
+                // Create remote peer
+                remoteConnection = new(ref config);
+                remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(remoteEndpointName, candidate); };
+                remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
+                remoteConnection.OnTrack = (RTCTrackEvent e) =>
+                {
+                    if (e.Track is VideoStreamTrack video)
+                    {
+                        video.OnVideoReceived += tex =>
+                        {
+                            rawImage.texture = tex;
+                        };
+                    }
+                    if (e.Track is AudioStreamTrack t)
+                    {
+                        audioSource.SetTrack(t);
+                        audioSource.loop = true;
+                        audioSource.Play();
+                    }
+                };
+
                 var transceiverDirection = new RTCRtpTransceiverInit();
                 transceiverDirection.direction = RTCRtpTransceiverDirection.RecvOnly;
 
@@ -423,6 +385,10 @@ public class OpenViduHandler : MonoBehaviour
                 remoteConnection.AddTransceiver(TrackKind.Audio, transceiverDirection);
 
                 operationRemote = remoteConnection.CreateOffer();
+            }
+            else
+            {
+                rawImage.texture = renderTexture;
             }
 
             AddTracks();
@@ -455,16 +421,6 @@ public class OpenViduHandler : MonoBehaviour
 
             published = true;
         }
-        // Response to Prepare Receive Message
-        /*else if (webSocketAnswer.id == prepareReceiveVideoId && !videoReceivingPrepared)
-        {
-            remoteOffer.type = RTCSdpType.Offer;
-            remoteOffer.sdp = webSocketAnswer.result.sdpOffer;
-
-            test = remoteConnection.SetRemoteDescription(ref remoteOffer);
-
-            videoReceivingPrepared = true;
-        }*/
         // Response to Receive Message
         else if (webSocketAnswer.id == receiveVideoId && !videoReceived)
         {
@@ -491,6 +447,29 @@ public class OpenViduHandler : MonoBehaviour
 
                 if (!string.IsNullOrEmpty(remoteVideoSenderId))
                 {
+                    var config = GetSelectedSdpSemantics();
+
+                    // Create remote peer
+                    remoteConnection = new(ref config);
+                    remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(remoteEndpointName, candidate); };
+                    remoteConnection.OnIceConnectionChange = state => { OnIceConnectionChange(remoteConnection, state); };
+                    remoteConnection.OnTrack = (RTCTrackEvent e) =>
+                    {
+                        if (e.Track is VideoStreamTrack video)
+                        {
+                            video.OnVideoReceived += tex =>
+                            {
+                                rawImage.texture = tex;
+                            };
+                        }
+                        if (e.Track is AudioStreamTrack t)
+                        {
+                            audioSource.SetTrack(t);
+                            audioSource.loop = true;
+                            audioSource.Play();
+                        }
+                    };
+
                     remoteEndpointName = webSocketAnswer.@params.id;
 
                     remoteConnection.OnIceCandidate = candidate => { OnIceCandidate(remoteEndpointName, candidate); };
@@ -511,6 +490,9 @@ public class OpenViduHandler : MonoBehaviour
             {
                 rawImage.texture = renderTexture;
                 remoteVideoSenderId = "";
+                answerCreated = false;
+                videoReceived = false;
+                receiveVideoId = -1;
             }
         }
     }
