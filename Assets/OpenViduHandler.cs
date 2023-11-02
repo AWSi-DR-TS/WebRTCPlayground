@@ -3,6 +3,7 @@ using NatML.Devices.Outputs;
 using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -68,6 +69,8 @@ public class OpenViduHandler : MonoBehaviour
     private RTCSetSessionDescriptionAsyncOperation operationRemoteVideoAnswer;
     private RTCSetSessionDescriptionAsyncOperation operationRemoteAudioAnswer;
     private WebSocketBridge webSocket;
+
+    private long fileCounter = 0;
 
     AudioClip mic;
     int lastPos, pos;
@@ -194,6 +197,16 @@ public class OpenViduHandler : MonoBehaviour
         Debug.Log("Setting zoom to " + zoomRatio);
 
         cameraDevice.zoomRatio = zoomRatio;
+    }
+
+    public void CapturePhoto()
+    {
+        var bytes = previewTexture.EncodeToPNG();
+        string path = "/storage/emulated/0/Android/media/com.awsi.webrtccamera/Pictures";
+        Directory.CreateDirectory(path);
+        string fileName = Path.Combine(path, fileCounter + ".png");
+        File.WriteAllBytes(fileName, bytes);
+        fileCounter++;
     }
 
     async Task StartCamera()
